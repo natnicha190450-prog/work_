@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MRBS Enterprise - ระบบบริหารและจองห้องประชุมองค์กร</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS for Excel Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0e8de9',
+              600: '#0270c7',
+              700: '#0359a1',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Sarabun", "Prompt", "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- TOP NAVBAR -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Brand -->
+        <div class="flex items-center gap-3">
+          <button id="mobileMenuBtn" class="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </button>
+          <div onclick="navigate('dashboard')" class="flex items-center gap-2.5 cursor-pointer">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/20">
+              <i data-lucide="building-2" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <span class="font-bold text-slate-900 tracking-tight text-base leading-tight block">MRBS Enterprise</span>
+              <span class="text-[11px] text-slate-500 font-medium block">ระบบจองห้องประชุมองค์กร</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Controls: Role Switcher & Notifications & User -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Quick Role Switcher for Demo -->
+          <div class="hidden md:flex items-center bg-slate-100 p-1 rounded-xl text-xs">
+            <span class="text-[11px] font-semibold text-slate-500 px-2">สลับบทบาททดสอบ:</span>
+            <button onclick="switchRole('ADMIN')" id="btnRoleAdmin" class="px-2.5 py-1 rounded-lg font-semibold transition">Admin</button>
+            <button onclick="switchRole('APPROVER')" id="btnRoleApprover" class="px-2.5 py-1 rounded-lg font-semibold transition">Approver</button>
+            <button onclick="switchRole('USER')" id="btnRoleUser" class="px-2.5 py-1 rounded-lg font-semibold transition">User</button>
+          </div>
+
+          <!-- Notification Bell -->
+          <div class="relative">
+            <button onclick="toggleNotifications()" class="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition">
+              <i data-lucide="bell" class="w-5 h-5"></i>
+              <span id="notifBadge" class="hidden absolute top-1 right-1 h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white">
+                0
+              </span>
+            </button>
+
+            <!-- Notifications Dropdown -->
+            <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 py-3 z-50">
+              <div class="flex items-center justify-between px-4 pb-2 border-b border-slate-100">
+                <span class="font-bold text-slate-800 text-xs">การแจ้งเตือน (Notifications)</span>
+                <button onclick="markAllNotificationsRead()" class="text-[11px] text-blue-600 hover:text-blue-700 font-medium">อ่านทั้งหมดแล้ว</button>
+              </div>
+              <div id="notifList" class="max-h-72 overflow-y-auto divide-y divide-slate-100 text-xs">
+                <!-- Notifications dynamically populated -->
+              </div>
+            </div>
+          </div>
+
+          <!-- User Badge -->
+          <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+            <div class="text-right hidden sm:block">
+              <span id="userNameDisplay" class="text-xs font-bold text-slate-800 block"></span>
+              <span id="userRoleBadge" class="text-[10px] px-2 py-0.2 rounded-full font-semibold"></span>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs" id="userAvatar">
+              U
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <div class="flex-1 flex max-w-7xl w-full mx-auto">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="fixed top-0 bottom-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0 lg:static lg:z-0">
+      <div class="flex items-center justify-between p-4 border-b border-slate-100 lg:hidden">
+        <span class="font-bold text-slate-800 text-sm">เมนูระบบ</span>
+        <button id="closeSidebarBtn" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        <div>
+          <h4 class="px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">ภาพรวมและปฏิทิน</h4>
+          <nav class="space-y-1 text-xs font-semibold">
+            <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+              <i data-lucide="layout-dashboard" class="w-4 h-4 text-slate-500"></i> แดชบอร์ดภาพรวม
+            </button>
+            <button onclick="navigate('calendar')" id="nav-calendar" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+              <i data-lucide="calendar" class="w-4 h-4 text-slate-500"></i> ปฏิทินการจองห้อง
+            </button>
+            <button onclick="navigate('new-booking')" id="nav-new-booking" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100/70">
+              <i data-lucide="plus-circle" class="w-4 h-4 text-blue-600"></i> จองห้องประชุมใหม่
+            </button>
+            <button onclick="navigate('rooms')" id="nav-rooms" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+              <i data-lucide="door-open" class="w-4 h-4 text-slate-500"></i> ห้องประชุมทั้งหมด
+            </button>
+            <button onclick="navigate('my-bookings')" id="nav-my-bookings" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+              <i data-lucide="bookmark-check" class="w-4 h-4 text-slate-500"></i> รายการจองของฉัน
+            </button>
+          </nav>
+        </div>
+
+        <div id="approverSection">
+          <h4 class="px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">การจัดการและอนุมัติ</h4>
+          <nav class="space-y-1 text-xs font-semibold">
+            <button onclick="navigate('approvals')" id="nav-approvals" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+              <i data-lucide="check-square" class="w-4 h-4 text-slate-500"></i> คิวรอการอนุมัติ
+            </button>
+            <button onclick="navigate('reports')" id="nav-reports" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+              <i data-lucide="bar-chart-3" class="w-4 h-4 text-slate-500"></i> รายงานและสถิติ
+            </button>
+          </nav>
+        </div>
+
+        <div id="adminSection">
+          <h4 class="px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">ผู้ดูแลระบบ (Admin)</h4>
+          <nav class="space-y-1 text-xs font-semibold">
+            <button onclick="navigate('admin-rooms')" id="nav-admin-rooms" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+              <i data-lucide="door-open" class="w-4 h-4 text-slate-500"></i> จัดการห้องและอุปกรณ์
+            </button>
+            <button onclick="navigate('admin-users')" id="nav-admin-users" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+              <i data-lucide="users" class="w-4 h-4 text-slate-500"></i> จัดการผู้ใช้และแผนก
+            </button>
+            <button onclick="navigate('admin-settings')" id="nav-admin-settings" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100">
+              <i data-lucide="settings" class="w-4 h-4 text-slate-500"></i> การตั้งค่าและ Audit Log
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <div class="p-3 border-t border-slate-100 bg-slate-50/50">
+        <div class="p-2.5 rounded-xl bg-blue-50/70 border border-blue-100/60 flex items-center gap-2 text-[11px]">
+          <i data-lucide="clock" class="w-4 h-4 text-blue-600 shrink-0"></i>
+          <div>
+            <span class="font-bold text-slate-800">เวลาประเทศไทย (UTC+7)</span>
+            <p class="text-slate-500">Asia/Bangkok Locale</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto" id="mainContent">
+      <!-- Dynamic View Views Injected Here -->
+    </main>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- GLOBAL MODAL CONTAINER -->
+  <div id="modalOverlay" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div id="modalContent" class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+      <!-- Injected modal content -->
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // 1. DATABASE & INITIAL SEED DATA (Stored in localStorage)
+    // -------------------------------------------------------------
+    const DB_KEY = "mrbs_enterprise_github_db";
+
+    const DEFAULT_SEED_DATA = {
+      rooms: [
+        {
+          id: "r1",
+          name: "ห้องกมลวรรณ (Executive Boardroom)",
+          code: "ROOM-1201",
+          description: "ห้องประชุมใหญ่สำหรับคณะกรรมการและผู้บริหารระดับสูง พร้อมระบบประชุมไฮบริดเต็มรูปแบบ",
+          capacity: 24,
+          floor: "ชั้น 12",
+          building: "อาคาร A",
+          imageUrl: "https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=800&q=80",
+          requiresApproval: true,
+          status: "ACTIVE"
+        },
+        {
+          id: "r2",
+          name: "ห้องอินทนิล (Grand Conference)",
+          code: "ROOM-0501",
+          description: "ห้องประชุมและสัมมนาระดับกลาง เหมาะสำหรับการประชุมร่วมระหว่างแผนกและการอบรม",
+          capacity: 16,
+          floor: "ชั้น 5",
+          building: "อาคาร A",
+          imageUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
+          requiresApproval: false,
+          status: "ACTIVE"
+        },
+        {
+          id: "r3",
+          name: "ห้องจามจุรี (Creative Workshop)",
+          code: "ROOM-0402",
+          description: "ห้องระดมความคิดและเวิร์กช็อปสไตล์ Agile มีผนังกระจกเขียนได้รอบห้อง",
+          capacity: 10,
+          floor: "ชั้น 4",
+          building: "อาคาร B",
+          imageUrl: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=800&q=80",
+          requiresApproval: false,
+          status: "ACTIVE"
+        },
+        {
+          id: "r4",
+          name: "ห้องชัยพฤกษ์ (Meeting Room A)",
+          code: "ROOM-0301",
+          description: "ห้องประชุมมาตรฐานสำหรับทีมงาน 6-8 คน สะดวก รวดเร็ว มีทีวีพร้อมสายต่อ HDMI/Type-C",
+          capacity: 8,
+          floor: "ชั้น 3",
+          building: "อาคาร A",
+          imageUrl: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=800&q=80",
+          requiresApproval: false,
+          status: "ACTIVE"
+        },
+        {
+          id: "r5",
+          name: "ห้องราชพฤกษ์ (Focus & 1-on-1)",
+          code: "ROOM-0302",
+          description: "ห้องประชุมขนาดกะทัดรัดสำหรับการสัมภาษณ์งาน คุยตัวต่อตัว หรือประชุมสายด่วน",
+          capacity: 4,
+          floor: "ชั้น 3",
+          building: "อาคาร A",
+          imageUrl: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=800&q=80",
+          requiresApproval: false,
+          status: "ACTIVE"
+        }
+      ],
+      departments: [
+        { id: "d1", name: "ฝ่ายบริหารระดับสูง (Executive)", code: "EXEC" },
+        { id: "d2", name: "ฝ่ายวิศวกรรมและเทคโนโลยี (IT)", code: "ENG" },
+        { id: "d3", name: "ฝ่ายทรัพยากรบุคคล (HR)", code: "HR" },
+        { id: "d4", name: "ฝ่ายการตลาดและพัฒนาธุรกิจ", code: "MKT" }
+      ],
+      users: [
+        { id: "u1", name: "สมชาย บริหารกิจ", email: "admin@company.com", role: "ADMIN", departmentId: "d1" },
+        { id: "u2", name: "พรรณี อนุมัติการ", email: "approver@company.com", role: "APPROVER", departmentId: "d1" },
+        { id: "u3", name: "กิตติศักดิ์ พัฒนาไทย", email: "user@company.com", role: "USER", departmentId: "d2" }
+      ],
+      equipments: [
+        { id: "eq1", name: "โปรเจกเตอร์เลเซอร์ 4K", description: "3840x2160 ความสว่าง 5000 Lumens" },
+        { id: "eq2", name: "กระดานอัจฉริยะ Interactive 85 นิ้ว", description: "จอสัมผัส 4K พร้อมฟังก์ชันเขียนและแชร์" },
+        { id: "eq3", name: "ชุดไมโครโฟนไร้สายรอบทิศทาง", description: "ตัดเสียงสะท้อน ไมค์ลอย 4 ตัว" },
+        { id: "eq4", name: "ชุดประชุมทางไกล Logitech Rally Bar", description: "กล้อง AI จัดเฟรมผู้พูดอัตโนมัติ" }
+      ],
+      bookings: [],
+      notifications: [],
+      auditLogs: []
+    };
+
+    function initDatabase() {
+      const existing = localStorage.getItem(DB_KEY);
+      if (!existing) {
+        // Seed today's bookings with Bangkok UTC+7
+        const todayStr = getTodayBangkokStr();
+        const base = JSON.parse(JSON.stringify(DEFAULT_SEED_DATA));
+        base.bookings = [
+          {
+            id: "b1",
+            title: "การประชุมวางแผนสปรินต์ประจำสัปดาห์ (Sprint Planning)",
+            description: "ทบทวน Backlog และจัดสรรงานสำหรับ Sprint 24",
+            roomId: "r2",
+            userId: "u3",
+            userName: "กิตติศักดิ์ พัฒนาไทย",
+            departmentName: "ฝ่ายวิศวกรรมและเทคโนโลยี (IT)",
+            date: todayStr,
+            startTime: "09:00",
+            endTime: "10:30",
+            attendees: 12,
+            status: "APPROVED"
+          },
+          {
+            id: "b2",
+            title: "สัมภาษณ์ผู้สมัครตำแหน่ง Senior Backend Developer",
+            description: "สัมภาษณ์รอบสุดท้ายร่วมกับหัวหน้าฝ่าย",
+            roomId: "r2",
+            userId: "u3",
+            userName: "กิตติศักดิ์ พัฒนาไทย",
+            departmentName: "ฝ่ายทรัพยากรบุคคล (HR)",
+            date: todayStr,
+            startTime: "10:30", // Adjacent half-open interval test!
+            endTime: "12:00",
+            attendees: 5,
+            status: "APPROVED"
+          },
+          {
+            id: "b3",
+            title: "การประชุมหารือพันธมิตรทางธุรกิจระดับภูมิภาค",
+            description: "นำเสนอรายงานไตรมาส 3 แก่คณะกรรมการบริหาร",
+            roomId: "r1",
+            userId: "u3",
+            userName: "กิตติศักดิ์ พัฒนาไทย",
+            departmentName: "ฝ่ายการตลาดและพัฒนาธุรกิจ",
+            date: todayStr,
+            startTime: "13:30",
+            endTime: "15:30",
+            attendees: 20,
+            status: "PENDING"
+          }
+        ];
+        base.notifications = [
+          { id: "n1", title: "การจองได้รับการอนุมัติ", message: "รายการ 'Sprint Planning' ได้รับการยืนยันแล้ว", isRead: true, time: "08:30 น." },
+          { id: "n2", title: "มีคำขอจองรอการอนุมัติ", message: "คำขอจอง 'ห้องกมลวรรณ' รอการพิจารณาจากคุณ", isRead: false, time: "10:15 น." }
+        ];
+        base.auditLogs = [
+          { action: "ROOM_CREATED", user: "สมชาย บริหารกิจ", details: "สร้างห้องกมลวรรณ", time: "28 ต.ค. 2569" },
+          { action: "BOOKING_CREATED", user: "กิตติศักดิ์ พัฒนาไทย", details: "ส่งคำขอจองห้องกมลวรรณ", time: "วันนี้ 09:30 น." }
+        ];
+        localStorage.setItem(DB_KEY, JSON.stringify(base));
+      }
+    }
+
+    function getDB() {
+      initDatabase();
+      return JSON.parse(localStorage.getItem(DB_KEY));
+    }
+
+    function saveDB(data) {
+      localStorage.setItem(DB_KEY, JSON.stringify(data));
+    }
+
+    // -------------------------------------------------------------
+    // 2. TIMEZONE & DATE FORMATTING (Asia/Bangkok UTC+7)
+    // -------------------------------------------------------------
+    function getTodayBangkokStr() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatThaiDateStr(dateStr) {
+      if (!dateStr) return "-";
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const months = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+      return `${d} ${months[m - 1]} ${y + 543}`;
+    }
+
+    // -------------------------------------------------------------
+    // 3. BOOKING CONFLICT PREVENTION ENGINE [start, end)
+    // -------------------------------------------------------------
+    function hasIntervalOverlap(aStart, aEnd, bStart, bEnd) {
+      return aStart < bEnd && aEnd > bStart;
+    }
+
+    function checkConflict(roomId, date, startStr, endStr, excludeBookingId = null) {
+      if (endStr <= startStr) {
+        return { hasConflict: true, message: "เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้นการประชุม" };
+      }
+
+      const db = getDB();
+      const room = db.rooms.find(r => r.id === roomId);
+      if (!room) return { hasConflict: true, message: "ไม่พบห้องประชุม" };
+
+      if (room.status !== "ACTIVE") {
+        return { hasConflict: true, message: `ห้องประชุมนี้อยู่ในสถานะ ${room.status === 'MAINTENANCE' ? 'ปิดปรับปรุง' : 'ไม่เปิดให้บริการ'}` };
+      }
+
+      // Check all active bookings on the same date and room
+      const sameDayBookings = db.bookings.filter(b => 
+        b.roomId === roomId &&
+        b.date === date &&
+        b.id !== excludeBookingId &&
+        (b.status === "APPROVED" || b.status === "PENDING")
+      );
+
+      for (const b of sameDayBookings) {
+        if (hasIntervalOverlap(startStr, endStr, b.startTime, b.endTime)) {
+          return {
+            hasConflict: true,
+            message: `ห้องนี้มีรายการจองซ้อนทับ: "${b.title}" (${b.startTime} - ${b.endTime} น.) [${b.status === 'APPROVED' ? 'อนุมัติแล้ว' : 'รออนุมัติ'}]`
+          };
+        }
+      }
+
+      return { hasConflict: false, message: "ห้องว่าง สามารถจองในช่วงเวลานี้ได้", requiresApproval: room.requiresApproval };
+    }
+
+    // -------------------------------------------------------------
+    // 4. USER & ROLE STATE
+    // -------------------------------------------------------------
+    let currentUser = null;
+    let currentView = "dashboard";
+
+    function setInitialUser() {
+      const db = getDB();
+      const savedRoleId = localStorage.getItem("mrbs_current_role") || "u1"; // Default to Admin
+      currentUser = db.users.find(u => u.id === savedRoleId) || db.users[0];
+      updateUserUI();
+    }
+
+    function switchRole(roleName) {
+      const db = getDB();
+      const user = db.users.find(u => u.role === roleName);
+      if (user) {
+        currentUser = user;
+        localStorage.setItem("mrbs_current_role", user.id);
+        updateUserUI();
+        navigate(currentView);
+        showToast(`สลับบทบาทเป็น ${roleName} (${user.name}) เรียบร้อยแล้ว`);
+      }
+    }
+
+    function updateUserUI() {
+      document.getElementById("userNameDisplay").textContent = currentUser.name;
+      document.getElementById("userAvatar").textContent = currentUser.name.charAt(0);
+
+      const badge = document.getElementById("userRoleBadge");
+      badge.textContent = currentUser.role;
+      badge.className = `text-[10px] px-2 py-0.5 rounded-full font-bold ${
+        currentUser.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
+        currentUser.role === 'APPROVER' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+      }`;
+
+      // Update role buttons
+      ['Admin', 'Approver', 'User'].forEach(r => {
+        const btn = document.getElementById(`btnRole${r}`);
+        if (btn) {
+          if (currentUser.role.toLowerCase() === r.toLowerCase()) {
+            btn.className = "px-2.5 py-1 rounded-lg font-bold bg-white text-slate-900 shadow-sm";
+          } else {
+            btn.className = "px-2.5 py-1 rounded-lg font-semibold text-slate-500 hover:text-slate-900";
+          }
+        }
+      });
+
+      // Role visibility in sidebar
+      const approverSection = document.getElementById("approverSection");
+      const adminSection = document.getElementById("adminSection");
+      approverSection.style.display = (currentUser.role === "ADMIN" || currentUser.role === "APPROVER") ? "block" : "none";
+      adminSection.style.display = (currentUser.role === "ADMIN") ? "block" : "none";
+    }
+
+    // -------------------------------------------------------------
+    // 5. NOTIFICATION CENTER
+    // -------------------------------------------------------------
+    function updateNotificationBadge() {
+      const db = getDB();
+      const unread = db.notifications.filter(n => !n.isRead).length;
+      const badge = document.getElementById("notifBadge");
+      if (unread > 0) {
+        badge.textContent = unread;
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+    }
+
+    function toggleNotifications() {
+      const dropdown = document.getElementById("notifDropdown");
+      dropdown.classList.toggle("hidden");
+      if (!dropdown.classList.contains("hidden")) {
+        renderNotificationsList();
+      }
+    }
+
+    function renderNotificationsList() {
+      const db = getDB();
+      const list = document.getElementById("notifList");
+      if (db.notifications.length === 0) {
+        list.innerHTML = `<div class="p-4 text-center text-slate-400">ไม่มีการแจ้งเตือน</div>`;
+        return;
+      }
+      list.innerHTML = db.notifications.map(n => `
+        <div class="p-3 hover:bg-slate-50 ${!n.isRead ? 'bg-blue-50/40' : ''}">
+          <p class="font-bold text-slate-800">${n.title}</p>
+          <p class="text-slate-500 mt-0.5">${n.message}</p>
+          <span class="text-[10px] text-slate-400 mt-1 block">${n.time}</span>
+        </div>
+      `).join("");
+    }
+
+    function markAllNotificationsRead() {
+      const db = getDB();
+      db.notifications.forEach(n => n.isRead = true);
+      saveDB(db);
+      updateNotificationBadge();
+      renderNotificationsList();
+    }
+
+    function showToast(message, type = "success") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = `p-3.5 px-4 rounded-xl shadow-lg border text-xs font-semibold flex items-center gap-2 transform transition duration-300 pointer-events-auto ${
+        type === 'success' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-rose-600 text-white border-rose-500'
+      }`;
+      toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" class="w-4 h-4"></i> <span>${message}</span>`;
+      container.appendChild(toast);
+      lucide.createIcons();
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // -------------------------------------------------------------
+    // 6. ROUTER & VIEWS
+    // -------------------------------------------------------------
+    function navigate(viewName, params = {}) {
+      currentView = viewName;
+      document.querySelectorAll(".nav-item").forEach(el => {
+        el.classList.remove("bg-blue-600", "text-white", "shadow-sm");
+        el.classList.add("text-slate-600");
+      });
+      const activeNav = document.getElementById(`nav-${viewName}`);
+      if (activeNav) {
+        activeNav.classList.remove("text-slate-600");
+        activeNav.classList.add("bg-blue-600", "text-white", "shadow-sm");
+      }
+
+      // Close mobile sidebar
+      document.getElementById("sidebar").classList.add("-translate-x-full");
+
+      const main = document.getElementById("mainContent");
+      if (viewName === "dashboard") renderDashboard(main);
+      else if (viewName === "calendar") renderCalendar(main);
+      else if (viewName === "new-booking") renderNewBooking(main, params);
+      else if (viewName === "rooms") renderRooms(main);
+      else if (viewName === "my-bookings") renderMyBookings(main);
+      else if (viewName === "approvals") renderApprovals(main);
+      else if (viewName === "reports") renderReports(main);
+      else if (viewName === "admin-rooms") renderAdminRooms(main);
+      else if (viewName === "admin-users") renderAdminUsers(main);
+      else if (viewName === "admin-settings") renderAdminSettings(main);
+
+      lucide.createIcons();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 1: DASHBOARD
+    // -------------------------------------------------------------
+    function renderDashboard(container) {
+      const db = getDB();
+      const today = getTodayBangkokStr();
+      const totalRooms = db.rooms.length;
+      const activeRooms = db.rooms.filter(r => r.status === "ACTIVE").length;
+      const meetingsToday = db.bookings.filter(b => b.date === today && (b.status === "APPROVED" || b.status === "PENDING")).length;
+      const pendingCount = db.bookings.filter(b => b.status === "PENDING").length;
+
+      // Calculate Utilization %
+      const todayApproved = db.bookings.filter(b => b.date === today && b.status === "APPROVED");
+      let totalMins = 0;
+      todayApproved.forEach(b => {
+        const [sh, sm] = b.startTime.split(":").map(Number);
+        const [eh, em] = b.endTime.split(":").map(Number);
+        totalMins += (eh * 60 + em) - (sh * 60 + sm);
+      });
+      const totalAvailableMins = activeRooms * 10 * 60; // 10 operating hours/day
+      const utilRate = Math.min(100, Math.round((totalMins / (totalAvailableMins || 1)) * 100));
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">ภาพรวมระบบจองห้องประชุม (Dashboard)</h1>
+              <p class="text-xs text-slate-500 mt-0.5">ข้อมูลการใช้งานห้องประชุมแบบเรียลไทม์ ประจำ${formatThaiDateStr(today)}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="navigate('calendar')" class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700">เปิดปฏิทิน</button>
+              <button onclick="navigate('new-booking')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/20">+ จองห้องประชุม</button>
+            </div>
+          </div>
+
+          <!-- KPI Cards -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+              <span class="text-[11px] font-semibold text-slate-500 uppercase">ห้องประชุมทั้งหมด</span>
+              <p class="text-2xl font-bold text-slate-900 mt-1">${totalRooms} <span class="text-xs text-slate-500 font-normal">ห้อง</span></p>
+              <span class="text-[11px] text-emerald-600 font-medium">พร้อมใช้ ${activeRooms} ห้อง</span>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+              <span class="text-[11px] font-semibold text-slate-500 uppercase">การประชุมวันนี้</span>
+              <p class="text-2xl font-bold text-blue-600 mt-1">${meetingsToday} <span class="text-xs text-slate-500 font-normal">รายการ</span></p>
+              <span class="text-[11px] text-slate-400">ประจำวันที่ ${formatThaiDateStr(today)}</span>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+              <span class="text-[11px] font-semibold text-slate-500 uppercase">คำขอรออนุมัติ</span>
+              <p class="text-2xl font-bold text-amber-600 mt-1">${pendingCount} <span class="text-xs text-slate-500 font-normal">รายการ</span></p>
+              <span class="text-[11px] text-amber-600 font-medium cursor-pointer" onclick="navigate('approvals')">คลิกเพื่อพิจารณา &rarr;</span>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+              <span class="text-[11px] font-semibold text-slate-500 uppercase">อัตราการใช้งานห้อง</span>
+              <p class="text-2xl font-bold text-slate-900 mt-1">${utilRate}%</p>
+              <span class="text-[11px] text-slate-400">จาก 10 ชม. ทำการ/วัน</span>
+            </div>
+          </div>
+
+          <!-- Charts and Lists -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <h3 class="text-sm font-bold text-slate-900 mb-1">แนวโน้มการจองห้องประชุมรายสัปดาห์</h3>
+              <p class="text-xs text-slate-500 mb-4">จำนวนการจองห้องในแต่ละวัน</p>
+              <div class="h-64 w-full">
+                <canvas id="trendChart"></canvas>
+              </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <h3 class="text-sm font-bold text-slate-900 mb-3">การประชุมเร็วๆ นี้</h3>
+              <div class="space-y-3">
+                ${db.bookings.slice(0, 4).map(b => {
+                  const room = db.rooms.find(r => r.id === b.roomId);
+                  return `
+                    <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/70 hover:border-blue-200 transition">
+                      <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-800 line-clamp-1">${b.title}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${b.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                          ${b.status === 'APPROVED' ? 'อนุมัติแล้ว' : 'รออนุมัติ'}
+                        </span>
+                      </div>
+                      <p class="text-[11px] text-slate-500 mt-1">${b.startTime} - ${b.endTime} น. • ${room ? room.name : '-'}</p>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Render Chart.js
+      setTimeout(() => {
+        const ctx = document.getElementById("trendChart");
+        if (ctx) {
+          new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: ["จันทร์", "อังคาร", "พุธ", "พฤหัส", "ศุกร์", "เสาร์", "อาทิตย์"],
+              datasets: [{
+                label: "จำนวนการจอง (ครั้ง)",
+                data: [4, 6, 8, 5, 7, 2, 1],
+                backgroundColor: "#2563eb",
+                borderRadius: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true, ticks: { stepSize: 2 } } }
+            }
+          });
+        }
+      }, 50);
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 2: CALENDAR
+    // -------------------------------------------------------------
+    let calendarDate = getTodayBangkokStr();
+
+    function renderCalendar(container) {
+      const db = getDB();
+      const bookingsOnDay = db.bookings.filter(b => b.date === calendarDate);
+
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">ปฏิทินการจองห้องประชุม</h1>
+              <p class="text-xs text-slate-500">ดูตารางการใช้ห้องประชุม ตรวจสอบช่วงเวลาว่าง และคลิกเพื่อเริ่มจอง</p>
+            </div>
+            <button onclick="navigate('new-booking')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white self-start sm:self-auto">+ จองห้อง</button>
+          </div>
+
+          <!-- Date Navigation -->
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <input type="date" value="${calendarDate}" onchange="calendarDate = this.value; navigate('calendar')" class="text-xs p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800">
+              <span class="text-xs font-bold text-slate-700">วันที่: ${formatThaiDateStr(calendarDate)}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="calendarDate = getTodayBangkokStr(); navigate('calendar')" class="text-xs px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold">วันนี้</button>
+            </div>
+          </div>
+
+          <!-- Schedule Grid by Room -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden p-5 space-y-4">
+            <h3 class="text-sm font-bold text-slate-800">ตารางการใช้ห้องประจำวัน</h3>
+
+            <div class="divide-y divide-slate-100">
+              ${db.rooms.map(room => {
+                const roomBookings = bookingsOnDay.filter(b => b.roomId === room.id);
+                return `
+                  <div class="py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="w-64">
+                      <p class="text-xs font-bold text-slate-900">${room.name}</p>
+                      <span class="text-[11px] text-slate-500">${room.building} (${room.floor}) • ความจุ ${room.capacity} คน</span>
+                    </div>
+
+                    <div class="flex-1 flex flex-wrap gap-2">
+                      ${roomBookings.length === 0 ? `
+                        <button onclick="navigate('new-booking', { roomId: '${room.id}', date: '${calendarDate}' })" class="text-xs text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 p-2 rounded-xl border border-dashed border-slate-200 transition">
+                          + คลิกเพื่อจองห้องนี้
+                        </button>
+                      ` : roomBookings.map(b => `
+                        <div onclick="showBookingDetail('${b.id}')" class="p-2 px-3 rounded-xl text-xs font-semibold cursor-pointer border ${
+                          b.status === 'APPROVED' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                          b.status === 'PENDING' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-slate-100 text-slate-600'
+                        }">
+                          <p class="leading-tight">${b.title}</p>
+                          <span class="text-[10px] opacity-80 block mt-0.5">${b.startTime} - ${b.endTime} น. [${b.status === 'APPROVED' ? 'อนุมัติ' : 'รออนุมัติ'}]</span>
+                        </div>
+                      `).join("")}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 3: NEW BOOKING
+    // -------------------------------------------------------------
+    function renderNewBooking(container, params = {}) {
+      const db = getDB();
+      const defaultRoom = params.roomId || (db.rooms[0] ? db.rooms[0].id : "");
+      const defaultDate = params.date || getTodayBangkokStr();
+
+      container.innerHTML = `
+        <div class="max-w-3xl mx-auto space-y-6">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">จองห้องประชุมใหม่ (New Booking)</h1>
+            <p class="text-xs text-slate-500 mt-0.5">ระบุวัน เวลา และตรวจสอบความพร้อมของห้องแบบเรียลไทม์</p>
+          </div>
+
+          <form id="bookingForm" onsubmit="handleBookingSubmit(event)" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-5">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5">เลือกห้องประชุม *</label>
+              <select id="bookRoomId" onchange="runLiveAvailabilityCheck()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+                ${db.rooms.map(r => `
+                  <option value="${r.id}" ${r.id === defaultRoom ? 'selected' : ''}>
+                    ${r.name} (${r.code}) — ความจุ ${r.capacity} คน ${r.requiresApproval ? '[ต้องรออนุมัติ]' : '[จองได้ทันที]'}
+                  </option>
+                `).join("")}
+              </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">วันที่ประชุม *</label>
+                <input type="date" id="bookDate" value="${defaultDate}" onchange="runLiveAvailabilityCheck()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold" required>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">เวลาเริ่ม *</label>
+                <input type="time" id="bookStartTime" value="09:00" onchange="runLiveAvailabilityCheck()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold" required>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">เวลาสิ้นสุด *</label>
+                <input type="time" id="bookEndTime" value="10:30" onchange="runLiveAvailabilityCheck()" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold" required>
+              </div>
+            </div>
+
+            <!-- Live Availability Check Banner -->
+            <div id="availabilityBanner" class="p-3.5 rounded-xl border text-xs font-semibold flex items-center gap-2">
+              <i data-lucide="info" class="w-4 h-4"></i>
+              <span id="availabilityText">กำลังตรวจสอบความพร้อมใช้งาน...</span>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5">หัวข้อการประชุม *</label>
+              <input type="text" id="bookTitle" placeholder="เช่น สรุปผลการดำเนินงานไตรมาส 3" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold" required>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">จำนวนผู้เข้าร่วม (คน) *</label>
+                <input type="number" id="bookAttendees" value="5" min="1" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold" required>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">แผนกที่ขอใช้</label>
+                <select id="bookDept" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
+                  ${db.departments.map(d => `<option value="${d.name}">${d.name}</option>`).join("")}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5">รายละเอียดหรือวาระการประชุมเพิ่มเติม</label>
+              <textarea id="bookDescription" rows="3" placeholder="ระบุรายละเอียด..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"></textarea>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button type="button" onclick="navigate('dashboard')" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">ยกเลิก</button>
+              <button type="submit" id="btnSubmitBooking" class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/20">ยืนยันการจองห้องประชุม</button>
+            </div>
+          </form>
+        </div>
+      `;
+
+      runLiveAvailabilityCheck();
+    }
+
+    function runLiveAvailabilityCheck() {
+      const roomId = document.getElementById("bookRoomId")?.value;
+      const date = document.getElementById("bookDate")?.value;
+      const start = document.getElementById("bookStartTime")?.value;
+      const end = document.getElementById("bookEndTime")?.value;
+
+      if (!roomId || !date || !start || !end) return;
+
+      const result = checkConflict(roomId, date, start, end);
+      const banner = document.getElementById("availabilityBanner");
+      const text = document.getElementById("availabilityText");
+      const submitBtn = document.getElementById("btnSubmitBooking");
+
+      if (result.hasConflict) {
+        banner.className = "p-3.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs font-semibold flex items-center gap-2";
+        text.textContent = result.message;
+        if (submitBtn) submitBtn.disabled = true;
+      } else {
+        banner.className = "p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold flex items-center gap-2";
+        text.textContent = `${result.message} ${result.requiresApproval ? '(ห้องนี้ต้องรอการอนุมัติ)' : '(อนุมัติใช้งานได้ทันที)'}`;
+        if (submitBtn) submitBtn.disabled = false;
+      }
+      lucide.createIcons();
+    }
+
+    function handleBookingSubmit(e) {
+      e.preventDefault();
+      const roomId = document.getElementById("bookRoomId").value;
+      const date = document.getElementById("bookDate").value;
+      const startTime = document.getElementById("bookStartTime").value;
+      const endTime = document.getElementById("bookEndTime").value;
+      const title = document.getElementById("bookTitle").value;
+      const attendees = Number(document.getElementById("bookAttendees").value);
+      const departmentName = document.getElementById("bookDept").value;
+      const description = document.getElementById("bookDescription").value;
+
+      // Final Conflict Re-validation
+      const check = checkConflict(roomId, date, startTime, endTime);
+      if (check.hasConflict) {
+        showToast(check.message, "error");
+        return;
+      }
+
+      const db = getDB();
+      const room = db.rooms.find(r => r.id === roomId);
+      const finalStatus = room.requiresApproval ? "PENDING" : "APPROVED";
+
+      const newBooking = {
+        id: "b_" + Date.now(),
+        title,
+        description,
+        roomId,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        departmentName,
+        date,
+        startTime,
+        endTime,
+        attendees,
+        status: finalStatus
+      };
+
+      db.bookings.unshift(newBooking);
+
+      // Add Notification
+      db.notifications.unshift({
+        id: "n_" + Date.now(),
+        title: finalStatus === "APPROVED" ? "จองห้องประชุมสำเร็จ" : "ส่งคำขอจองห้องเรียบร้อย",
+        message: `รายการ "${title}" (${room.name}) สถานะ: ${finalStatus === 'APPROVED' ? 'อนุมัติแล้ว' : 'รอการอนุมัติ'}`,
+        isRead: false,
+        time: "เมื่อสักครู่"
+      });
+
+      // Add Audit Log
+      db.auditLogs.unshift({
+        action: "BOOKING_CREATED",
+        user: currentUser.name,
+        details: `จองห้อง ${room.name} สำหรับ "${title}"`,
+        time: "เมื่อสักครู่"
+      });
+
+      saveDB(db);
+      updateNotificationBadge();
+      showToast(finalStatus === "APPROVED" ? "จองห้องสำเร็จ ได้รับการอนุมัติทันที!" : "ส่งคำขอจองเรียบร้อย อยู่ระหว่างรออนุมัติ");
+      navigate("my-bookings");
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 4: ROOM DIRECTORY
+    // -------------------------------------------------------------
+    function renderRooms(container) {
+      const db = getDB();
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">ห้องประชุมทั้งหมด (Meeting Rooms)</h1>
+              <p class="text-xs text-slate-500 mt-0.5">เลือกดูห้องประชุมตามขนาด ความจุ และสิ่งอำนวยความสะดวก</p>
+            </div>
+            <button onclick="navigate('new-booking')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white self-start sm:self-auto">+ จองห้อง</button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            ${db.rooms.map(room => `
+              <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition">
+                <div class="relative h-44 w-full bg-slate-100 overflow-hidden">
+                  <img src="${room.imageUrl}" alt="${room.name}" class="w-full h-full object-cover">
+                  <div class="absolute top-3 left-3 flex gap-1">
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white ${room.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-rose-500'}">
+                      ${room.status === 'ACTIVE' ? 'เปิดใช้งาน' : 'ปิดปรับปรุง'}
+                    </span>
+                    ${room.requiresApproval ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-white">ต้องขออนุมัติ</span>` : ''}
+                  </div>
+                  <div class="absolute bottom-3 right-3 bg-slate-900/80 text-white px-2.5 py-1 rounded-lg text-xs font-bold">
+                    ${room.capacity} ที่นั่ง
+                  </div>
+                </div>
+
+                <div class="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div>
+                    <h3 class="text-sm font-bold text-slate-900">${room.name}</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">${room.building} • ${room.floor} (${room.code})</p>
+                    <p class="text-xs text-slate-600 mt-2 line-clamp-2">${room.description}</p>
+                  </div>
+                  <button onclick="navigate('new-booking', { roomId: '${room.id}' })" class="w-full py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition">
+                    จองห้องนี้ &rarr;
+                  </button>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 5: MY BOOKINGS
+    // -------------------------------------------------------------
+    function renderMyBookings(container) {
+      const db = getDB();
+      const myBookings = db.bookings.filter(b => b.userId === currentUser.id);
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">รายการจองของฉัน (My Bookings)</h1>
+              <p class="text-xs text-slate-500 mt-0.5">ประวัติและสถานะคำขอจองห้องประชุมของคุณ</p>
+            </div>
+            <button onclick="navigate('new-booking')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white self-start sm:self-auto">+ จองห้องใหม่</button>
+          </div>
+
+          <div class="space-y-3">
+            ${myBookings.length === 0 ? `
+              <div class="p-12 text-center bg-white rounded-2xl border border-slate-200">
+                <p class="text-xs text-slate-500">คุณยังไม่มีรายการจองห้องประชุม</p>
+              </div>
+            ` : myBookings.map(b => {
+              const room = db.rooms.find(r => r.id === b.roomId);
+              return `
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h3 class="text-sm font-bold text-slate-900">${b.title}</h3>
+                      <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
+                        b.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
+                        b.status === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                      }">
+                        ${b.status === 'APPROVED' ? 'อนุมัติแล้ว' : b.status === 'PENDING' ? 'รออนุมัติ' : 'ยกเลิก/ปฏิเสธ'}
+                      </span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">${formatThaiDateStr(b.date)} • ${b.startTime} - ${b.endTime} น. • ${room ? room.name : '-'}</p>
+                  </div>
+                  <div class="flex items-center gap-2 self-end sm:self-auto">
+                    <button onclick="showBookingDetail('${b.id}')" class="text-xs font-semibold text-blue-600 hover:underline">ดูรายละเอียด</button>
+                    ${b.status !== 'CANCELLED' ? `
+                      <button onclick="cancelBooking('${b.id}')" class="text-xs font-semibold text-rose-600 hover:underline ml-2">ยกเลิก</button>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function cancelBooking(id) {
+      if (confirm("ยืนยันการยกเลิกการจองห้องนี้หรือไม่?")) {
+        const db = getDB();
+        const b = db.bookings.find(item => item.id === id);
+        if (b) {
+          b.status = "CANCELLED";
+          saveDB(db);
+          showToast("ยกเลิกการจองเรียบร้อยแล้ว");
+          navigate("my-bookings");
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 6: APPROVAL QUEUE
+    // -------------------------------------------------------------
+    function renderApprovals(container) {
+      const db = getDB();
+      const pendings = db.bookings.filter(b => b.status === "PENDING");
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">คิวรอการอนุมัติ (Approval Queue)</h1>
+            <p class="text-xs text-slate-500 mt-0.5">พิจารณาคำขอจองห้องประชุมที่ต้องได้รับการอนุมัติ</p>
+          </div>
+
+          <div class="space-y-3">
+            ${pendings.length === 0 ? `
+              <div class="p-12 text-center bg-white rounded-2xl border border-slate-200">
+                <p class="text-xs text-slate-500">ไม่มีคำขอค้างในคิวรออนุมัติ</p>
+              </div>
+            ` : pendings.map(b => {
+              const room = db.rooms.find(r => r.id === b.roomId);
+              return `
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                      <h3 class="text-sm font-bold text-slate-900">${b.title}</h3>
+                      <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">รออนุมัติ</span>
+                    </div>
+                    <p class="text-xs text-slate-600">${formatThaiDateStr(b.date)} • ${b.startTime} - ${b.endTime} น. • ห้อง: ${room ? room.name : '-'}</p>
+                    <p class="text-xs text-slate-500">ผู้ขอจอง: ${b.userName} (${b.departmentName}) • จำนวนผู้เข้าร่วม: ${b.attendees} คน</p>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="handleApprovalAction('${b.id}', 'REJECT')" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100">ปฏิเสธ</button>
+                    <button onclick="handleApprovalAction('${b.id}', 'APPROVE')" class="px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700">อนุมัติการจอง</button>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function handleApprovalAction(bookingId, action) {
+      const reason = action === 'REJECT' ? prompt("กรุณาระบุเหตุผลในการปฏิเสธการจอง:") : "";
+      if (action === 'REJECT' && reason === null) return;
+
+      const db = getDB();
+      const b = db.bookings.find(item => item.id === bookingId);
+      if (b) {
+        b.status = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+        b.rejectReason = reason || "";
+        db.auditLogs.unshift({
+          action: action === 'APPROVE' ? 'BOOKING_APPROVED' : 'BOOKING_REJECTED',
+          user: currentUser.name,
+          details: `พิจารณาคำขอ "${b.title}" (${action})`,
+          time: "เมื่อสักครู่"
+        });
+        saveDB(db);
+        showToast(action === 'APPROVE' ? "อนุมัติการจองเรียบร้อยแล้ว" : "ปฏิเสธคำขอจองเรียบร้อยแล้ว");
+        navigate("approvals");
+      }
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 7: REPORTS & EXCEL EXPORT
+    // -------------------------------------------------------------
+    function renderReports(container) {
+      const db = getDB();
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">รายงานและสถิติ (Reports & Analytics)</h1>
+              <p class="text-xs text-slate-500 mt-0.5">วิเคราะห์อัตราการใช้งานห้องจริง และส่งออกเป็น Excel</p>
+            </div>
+            <button onclick="exportToExcel()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-500/20">
+              <i data-lucide="download" class="w-4 h-4"></i> ส่งออกรายงาน Excel (XLSX)
+            </button>
+          </div>
+
+          <!-- Utilization Table -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+            <h3 class="text-sm font-bold text-slate-800">อัตราการใช้งานแต่ละห้อง (Room Utilization Analysis)</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-slate-200 text-slate-400 uppercase text-[11px]">
+                    <th class="py-2.5 px-3">ห้องประชุม</th>
+                    <th class="py-2.5 px-3">ความจุ</th>
+                    <th class="py-2.5 px-3">จำนวนการจอง</th>
+                    <th class="py-2.5 px-3">อัตราการใช้งาน (Utilization)</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  ${db.rooms.map(r => {
+                    const count = db.bookings.filter(b => b.roomId === r.id && b.status === 'APPROVED').length;
+                    const pct = Math.min(100, count * 20); // sample calc
+                    return `
+                      <tr>
+                        <td class="py-3 px-3 font-bold text-slate-800">${r.name}</td>
+                        <td class="py-3 px-3 text-slate-600">${r.capacity} คน</td>
+                        <td class="py-3 px-3 text-slate-800 font-semibold">${count} ครั้ง</td>
+                        <td class="py-3 px-3">
+                          <div class="flex items-center gap-2">
+                            <div class="w-28 bg-slate-100 h-2 rounded-full overflow-hidden">
+                              <div class="bg-blue-600 h-full rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                            <span class="font-bold text-slate-700">${pct}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function exportToExcel() {
+      const db = getDB();
+      const rows = db.bookings.map(b => {
+        const room = db.rooms.find(r => r.id === b.roomId);
+        return {
+          "รหัสการจอง": b.id,
+          "หัวข้อการประชุม": b.title,
+          "ห้องประชุม": room ? room.name : "-",
+          "วันที่": b.date,
+          "เวลาเริ่ม": b.startTime + " น.",
+          "เวลาสิ้นสุด": b.endTime + " น.",
+          "ผู้ขอจอง": b.userName,
+          "แผนก": b.departmentName,
+          "จำนวนผู้เข้าร่วม": b.attendees,
+          "สถานะ": b.status
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "รายงานการจอง");
+      XLSX.writeFile(wb, `meeting_room_report_${getTodayBangkokStr()}.xlsx`);
+      showToast("ส่งออกไฟล์ Excel สำเร็จเรียบร้อยแล้ว");
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 8: ADMIN ROOMS
+    // -------------------------------------------------------------
+    function renderAdminRooms(container) {
+      const db = getDB();
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">จัดการห้องประชุม (Rooms Management)</h1>
+              <p class="text-xs text-slate-500 mt-0.5">เปิดใช้งาน/ปิดปรับปรุงห้องประชุม</p>
+            </div>
+            <button onclick="promptAddRoom()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white self-start sm:self-auto">+ เพิ่มห้องใหม่</button>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-400 uppercase text-[11px]">
+                <tr>
+                  <th class="py-3 px-4">ชื่อห้องประชุม</th>
+                  <th class="py-3 px-4">รหัส</th>
+                  <th class="py-3 px-4">ความจุ</th>
+                  <th class="py-3 px-4">สถานะ</th>
+                  <th class="py-3 px-4 text-right">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${db.rooms.map(r => `
+                  <tr>
+                    <td class="py-3 px-4 font-bold text-slate-800">${r.name}</td>
+                    <td class="py-3 px-4 text-slate-500">${r.code}</td>
+                    <td class="py-3 px-4 font-semibold text-slate-700">${r.capacity} คน</td>
+                    <td class="py-3 px-4">
+                      <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${r.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                        ${r.status === 'ACTIVE' ? 'เปิดใช้งาน' : 'ปิดปรับปรุง'}
+                      </span>
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                      <button onclick="toggleRoomStatus('${r.id}')" class="text-xs px-2.5 py-1 rounded-lg border font-semibold ${r.status === 'ACTIVE' ? 'border-amber-200 text-amber-700' : 'border-emerald-200 text-emerald-700'}">
+                        ${r.status === 'ACTIVE' ? 'ปิดปรับปรุง' : 'เปิดใช้งาน'}
+                      </button>
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleRoomStatus(roomId) {
+      const db = getDB();
+      const r = db.rooms.find(item => item.id === roomId);
+      if (r) {
+        r.status = r.status === "ACTIVE" ? "MAINTENANCE" : "ACTIVE";
+        saveDB(db);
+        showToast(`อัปเดตสถานะห้อง ${r.name} เรียบร้อย`);
+        navigate("admin-rooms");
+      }
+    }
+
+    function promptAddRoom() {
+      const name = prompt("ชื่อห้องประชุม:");
+      if (!name) return;
+      const capacity = Number(prompt("ความจุ (คน):") || 10);
+      const db = getDB();
+      db.rooms.push({
+        id: "r_" + Date.now(),
+        name,
+        code: "ROOM-" + Math.floor(1000 + Math.random() * 9000),
+        description: "ห้องประชุมมาตรฐาน",
+        capacity,
+        floor: "ชั้น 2",
+        building: "อาคารหลัก",
+        imageUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
+        requiresApproval: false,
+        status: "ACTIVE"
+      });
+      saveDB(db);
+      showToast("เพิ่มห้องประชุมเรียบร้อยแล้ว");
+      navigate("admin-rooms");
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 9: ADMIN USERS
+    // -------------------------------------------------------------
+    function renderAdminUsers(container) {
+      const db = getDB();
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">จัดการผู้ใช้งานและสิทธิ์ (Users & RBAC)</h1>
+            <p class="text-xs text-slate-500 mt-0.5">กำหนดบทบาทผู้ใช้งานในระบบ</p>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-400 uppercase text-[11px]">
+                <tr>
+                  <th class="py-3 px-4">ชื่อผู้ใช้</th>
+                  <th class="py-3 px-4">อีเมล</th>
+                  <th class="py-3 px-4">บทบาท (Role)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${db.users.map(u => `
+                  <tr>
+                    <td class="py-3 px-4 font-bold text-slate-800">${u.name}</td>
+                    <td class="py-3 px-4 text-slate-600">${u.email}</td>
+                    <td class="py-3 px-4">
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
+                        u.role === 'APPROVER' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                      }">
+                        ${u.role}
+                      </span>
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // -------------------------------------------------------------
+    // VIEW 10: ADMIN SETTINGS & AUDIT LOGS
+    // -------------------------------------------------------------
+    function renderAdminSettings(container) {
+      const db = getDB();
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">การตั้งค่าและบันทึกการตรวจสอบ (Audit Logs)</h1>
+            <p class="text-xs text-slate-500 mt-0.5">ประวัติการทำรายการทั้งหมดในระบบ</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+            <h3 class="text-sm font-bold text-slate-800">บันทึกการตรวจสอบ (Audit Trail)</h3>
+            <div class="divide-y divide-slate-100 text-xs">
+              ${db.auditLogs.map(log => `
+                <div class="py-2.5 flex items-center justify-between">
+                  <div>
+                    <span class="font-bold text-slate-800">${log.action}</span>
+                    <p class="text-slate-500 mt-0.5">${log.details} • โดย ${log.user}</p>
+                  </div>
+                  <span class="text-[10px] text-slate-400">${log.time}</span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // -------------------------------------------------------------
+    // MODAL DIALOGS
+    // -------------------------------------------------------------
+    function showBookingDetail(bookingId) {
+      const db = getDB();
+      const b = db.bookings.find(item => item.id === bookingId);
+      if (!b) return;
+      const room = db.rooms.find(r => r.id === b.roomId);
+
+      const overlay = document.getElementById("modalOverlay");
+      const content = document.getElementById("modalContent");
+
+      content.innerHTML = `
+        <div class="flex items-start justify-between pb-3 border-b border-slate-100">
+          <div>
+            <span class="text-[10px] font-bold text-slate-400 uppercase">รายละเอียดการจอง</span>
+            <h3 class="text-base font-bold text-slate-900 mt-0.5">${b.title}</h3>
+          </div>
+          <button onclick="closeModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <div class="py-4 space-y-2.5 text-xs">
+          <div class="flex justify-between"><span class="text-slate-500">ห้อง:</span><span class="font-bold text-slate-800">${room ? room.name : '-'}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">วันและเวลา:</span><span class="font-bold text-slate-800">${formatThaiDateStr(b.date)} (${b.startTime} - ${b.endTime} น.)</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">ผู้ขอจอง:</span><span class="font-bold text-slate-800">${b.userName}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">แผนก:</span><span class="font-bold text-slate-800">${b.departmentName || '-'}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">สถานะ:</span><span class="font-bold text-blue-600">${b.status}</span></div>
+          ${b.description ? `<div class="pt-2 border-t text-slate-600 bg-slate-50 p-2.5 rounded-xl">${b.description}</div>` : ''}
+        </div>
+        <div class="pt-3 border-t border-slate-100 text-right">
+          <button onclick="closeModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700">ปิดหน้าต่าง</button>
+        </div>
+      `;
+      overlay.classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("modalOverlay").classList.add("hidden");
+    }
+
+    // -------------------------------------------------------------
+    // INITIALIZATION
+    // -------------------------------------------------------------
+    window.addEventListener("DOMContentLoaded", () => {
+      setInitialUser();
+      updateNotificationBadge();
+      navigate("dashboard");
+
+      document.getElementById("mobileMenuBtn").addEventListener("click", () => {
+        document.getElementById("sidebar").classList.remove("-translate-x-full");
+      });
+      document.getElementById("closeSidebarBtn").addEventListener("click", () => {
+        document.getElementById("sidebar").classList.add("-translate-x-full");
+      });
+    });
+  </script>
+</body>
+</html>
